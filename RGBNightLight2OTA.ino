@@ -1,11 +1,23 @@
+ #include <Dns.h>
+#include <EthernetClient.h>
+#include <Ethernet.h>
+#include <EthernetServer.h>
+#include <Dhcp.h>
+#include <EthernetUdp.h>
+
 #include <Adafruit_DotStar.h>
 #include <SPI.h>
 #include <ESP8266WiFi.h>
 #include <BlynkSimpleEsp8266.h>
 #include <ESP8266mDNS.h>
 #include <WiFiUdp.h>
+
 #include <ArduinoOTA.h>
 #include <SimpleTimer.h>
+
+#include <DNSServer.h>            //Local DNS Server used for redirecting all requests to the configuration portal
+#include <ESP8266WebServer.h>     //Local WebServer used to serve the configuration portal
+#include <WiFiManager.h>          //https://github.com/tzapu/WiFiManager WiFi Configuration Magic
  
 #define NUMPIXELS 10
  
@@ -16,10 +28,12 @@
 //how many clients should be able to telnet to this ESP8266
 #define MAX_SRV_CLIENTS 1
 
+
+
+// -------- Telnet debug comments
 WiFiServer server(23);
 WiFiClient serverClients[MAX_SRV_CLIENTS];
-
-
+// ------------------------------
 
 
 const boolean invert = false; // set true if common anode, false if common cathode
@@ -36,7 +50,9 @@ byte numpix=1;
 
 Adafruit_DotStar strip = Adafruit_DotStar(NUMPIXELS, DATAPIN, CLOCKPIN);
 char auth[] = "4915df8376924887a8aa7801889462d9";
-byte Refreshtime = 100; //delay time between transitions
+
+//byte Refreshtime = 100; //delay time between transitions
+int Refreshtime = 100; //delay time between transitions
 
 SimpleTimer timer;
 
@@ -50,26 +66,28 @@ colour <<= 8; //shift 8 bits to the left to clear out previous value
 colour |= G;
 colour <<=8;
 colour |= B;
-
-
-
-  strip.setPixelColor(i, colour);
 colour <<=8;
 colour |= R;
 
+strip.setPixelColor(i, colour);
 strip.show();
 
+
+//if multiple multiple pixels should be updated at a time
 count++;
 if(count>numpix) {
     count = 0;
 colourbyte++;
 }
 
+//reset colour and dim brightness
 if (colourbyte > 255) 
     {
     colourbyte = 0;
     brightness--;
     }
+
+//next led
 i++;
 if(i>NUMPIXELS) i = 0;
 
@@ -78,74 +96,6 @@ timer.setTimeout(Refreshtime, updatepixels);
 
 
  
-void setup() {
-    Serial.begin(115200);
-  Serial.println("Booting");
-  Serial.println("Firmware 0.322 16/10/2016");
-  WiFi.mode(WIFI_STA);
-  Blynk.begin(auth, "HoffHouse", "unevenbutter269");
-  strip.begin();
-  strip.show();
-
-  server.begin();
-
-ArduinoOTA.setPassword((const char *)"123");
-  
-  ArduinoOTA.onStart([]() {
-    Serial.println("Start");
-  });
-  ArduinoOTA.onEnd([]() {
-    Serial.println("\nEnd");
-  });
-  ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
-    Serial.printf("Progress: %u%%\r", (progress / (total / 100)));
-  });
-  ArduinoOTA.onError([](ota_error_t error) {
-    Serial.printf("Error[%u]: ", error);
-    if (error == OTA_AUTH_ERROR) Serial.println("Auth Failed");
-    else if (error == OTA_BEGIN_ERROR) Serial.println("Begin Failed");
-    else if (error == OTA_CONNECT_ERROR) Serial.println("Connect Failed");
-    else if (error == OTA_RECEIVE_ERROR) Serial.println("Receive Failed");
-    else if (error == OTA_END_ERROR) Serial.println("End Failed");
-  });
-    ArduinoOTA.begin();
-  Serial.println("Ready");
-  Serial.print("IP address: ");
-  Serial.println(WiFi.localIP());
-
-  timer.setTimeout(1200, updatepixels);
-  
-  //headlamp
-  pinMode(14, OUTPUT);
-  digitalWrite(14, LOW);   // sets the LED off
-}
-BLYNK_WRITE(1) { //in blynk app, large RED slider set to virtual pin 1 with minimum = 0 and maximum = 255
-     brightness = param.asInt();
-}
-BLYNK_WRITE(2) { //in blynk app, large RED slider set to virtual pin 1 with minimum = 0 and maximum = 255
-     Refreshtime = param.asInt();
-}
-BLYNK_WRITE(3) { //in blynk app, large RED slider set to virtual pin 1 with minimum = 0 and maximum = 255
-     numpix = param.asInt();
-}
-BLYNK_WRITE(4) { //in blynk app, on / off for lamp
-     if (param.asInt() == 0)
-     {
-      serverClients[0].println("OFF");
-     brightness = param.asInt();
-     Refreshtime = 100;
-     digitalWrite(14, LOW);   // sets the LED off
-     }
-     else
-     {
-      serverClients[0].println("ON");
-      digitalWrite(14, HIGH);   // sets the LED off
-      brightness = 180;
-      Refreshtime = 100;
-     }
-
-     
-}
 // function to convert a colour to its Red, Green, and Blue components.
 void hueToRGB( int hue, int brightness)
 {
@@ -203,16 +153,90 @@ void hueToRGB( int hue, int brightness)
 }
 
 
+void setup() {
+    Serial.begin(115200);
+
+
+WiFiManager wifiManager;
+wifiManager.setConnectTimeout(30);
+wifiManager.autoConnect();
+   
+  Serial.println("Booting");
+  Serial.println("Firmware 0.38 25/10/2016");
+WiFi.mode(WIFI_STA);
+//  Blynk.begin(auth, "HoffHouse", "unevenbutter269");
+//    Blynk.begin(auth);
+  Blynk.config(auth); //test wifi
+  strip.begin();
+  strip.show();
+
+  server.begin();
+
+//ArduinoOTA.setPassword((const char *)"123");
+  
+  ArduinoOTA.onStart([]() {
+    Serial.println("Start");
+  });
+  ArduinoOTA.onEnd([]() {
+    Serial.println("\nEnd");
+  });
+  ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
+    Serial.printf("Progress: %u%%\r", (progress / (total / 100)));
+  });
+  ArduinoOTA.onError([](ota_error_t error) {
+    Serial.printf("Error[%u]: ", error);
+    if (error == OTA_AUTH_ERROR) Serial.println("Auth Failed");
+    else if (error == OTA_BEGIN_ERROR) Serial.println("Begin Failed");
+    else if (error == OTA_CONNECT_ERROR) Serial.println("Connect Failed");
+    else if (error == OTA_RECEIVE_ERROR) Serial.println("Receive Failed");
+    else if (error == OTA_END_ERROR) Serial.println("End Failed");
+  });
+    ArduinoOTA.begin();
+  Serial.println("Ready");
+  Serial.print("IP address: ");
+  Serial.println(WiFi.localIP());
+
+  timer.setTimeout(1200, updatepixels);
+  
+  //headlamp
+  pinMode(14, OUTPUT);
+  digitalWrite(14, LOW);   // sets the LED off
+}
+BLYNK_WRITE(1) { //brightness
+     brightness = param.asInt();
+}
+BLYNK_WRITE(2) { //refreshtime
+     Refreshtime = param.asInt();
+}
+BLYNK_WRITE(3) { //number of pixels to update at a time
+     numpix = param.asInt();
+}
+BLYNK_WRITE(4) { //in blynk app, on / off for lamp
+    if (param.asInt() == 0)
+     {
+      serverClients[0].println("OFF");
+     brightness = param.asInt();
+     Refreshtime = 100;
+     digitalWrite(14, LOW);   // sets the LED off
+     }
+     else
+     {
+      serverClients[0].println("ON");
+      digitalWrite(14, HIGH);   // sets the LED on
+      brightness = 180;
+      Refreshtime = 100;
+     }
+}
+
+
 void loop() {
- // strip.setPixelcolor(head, colour);
-  //strip.setPixelcolor(tail, 0);
-    ArduinoOTA.handle();
+  ArduinoOTA.handle();
   Blynk.run();
   timer.run();
-//for (int i = 0; i < NUMPIXELS; i++)
-//    {
 
 
+
+// ---------- Trial on telnet debug messages
  if (server.hasClient()){
     for(i = 0; i < MAX_SRV_CLIENTS; i++){
       //find free/disconnected spot
@@ -221,42 +245,13 @@ void loop() {
         serverClients[i] = server.available();
         Serial1.print("New client: "); Serial1.print(i);
         continue;
-       serverClients[0].println("Firmware 0.322 16/10/2016");
+       serverClients[0].println("Firmware 0.381 25/10/2016");
       }
     }
     //no free/disconnected spot so reject
     WiFiClient serverClient = server.available();
     serverClient.stop();
   }
+// -----------------
 
-
-
-//  //check UART for data
-//  if(Serial.available()){
-//    size_t len = Serial.available();
-//    uint8_t sbuf[len];
-//    Serial.readBytes(sbuf, len);
-//    //push UART data to all connected telnet clients
-//    for(i = 0; i < MAX_SRV_CLIENTS; i++){
-//      if (serverClients[i] && serverClients[i].connected()){
-//        serverClients[i].write(sbuf, len);
-//        delay(1);
-//      }
     }
-
-
-
-
-
-
-
-//}
-
-  
-
-
-
- 
-
- 
-
