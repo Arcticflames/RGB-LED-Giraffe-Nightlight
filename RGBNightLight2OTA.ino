@@ -164,8 +164,7 @@ wifiManager.autoConnect();
   Serial.println("Booting");
   Serial.println("Firmware 0.38 25/10/2016");
 WiFi.mode(WIFI_STA);
-//  Blynk.begin(auth, "HoffHouse", "unevenbutter269");
-//    Blynk.begin(auth);
+
   Blynk.config(auth); //test wifi
   strip.begin();
   strip.show();
