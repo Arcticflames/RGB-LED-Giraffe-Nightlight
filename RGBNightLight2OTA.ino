@@ -66,26 +66,28 @@ colour <<= 8; //shift 8 bits to the left to clear out previous value
 colour |= G;
 colour <<=8;
 colour |= B;
-
-
-
-  strip.setPixelColor(i, colour);
 colour <<=8;
 colour |= R;
 
+strip.setPixelColor(i, colour);
 strip.show();
 
+
+//if multiple multiple pixels should be updated at a time
 count++;
 if(count>numpix) {
     count = 0;
 colourbyte++;
 }
 
+//reset colour and dim brightness
 if (colourbyte > 255) 
     {
     colourbyte = 0;
     brightness--;
     }
+
+//next led
 i++;
 if(i>NUMPIXELS) i = 0;
 
@@ -162,8 +164,7 @@ wifiManager.autoConnect();
   Serial.println("Booting");
   Serial.println("Firmware 0.38 25/10/2016");
 WiFi.mode(WIFI_STA);
-//  Blynk.begin(auth, "HoffHouse", "unevenbutter269");
-//    Blynk.begin(auth);
+
   Blynk.config(auth); //test wifi
   strip.begin();
   strip.show();
@@ -200,13 +201,13 @@ WiFi.mode(WIFI_STA);
   pinMode(14, OUTPUT);
   digitalWrite(14, LOW);   // sets the LED off
 }
-BLYNK_WRITE(1) { //in blynk app, large RED slider set to virtual pin 1 with minimum = 0 and maximum = 255
+BLYNK_WRITE(1) { //brightness
      brightness = param.asInt();
 }
-BLYNK_WRITE(2) { //in blynk app, large RED slider set to virtual pin 1 with minimum = 0 and maximum = 255
+BLYNK_WRITE(2) { //refreshtime
      Refreshtime = param.asInt();
 }
-BLYNK_WRITE(3) { //in blynk app, large RED slider set to virtual pin 1 with minimum = 0 and maximum = 255
+BLYNK_WRITE(3) { //number of pixels to update at a time
      numpix = param.asInt();
 }
 BLYNK_WRITE(4) { //in blynk app, on / off for lamp
@@ -228,13 +229,9 @@ BLYNK_WRITE(4) { //in blynk app, on / off for lamp
 
 
 void loop() {
- // strip.setPixelcolor(head, colour);
-  //strip.setPixelcolor(tail, 0);
-    ArduinoOTA.handle();
+  ArduinoOTA.handle();
   Blynk.run();
   timer.run();
-//for (int i = 0; i < NUMPIXELS; i++)
-//    {
 
 
 
@@ -257,8 +254,3 @@ void loop() {
 // -----------------
 
     }
-
- 
-
- 
-
