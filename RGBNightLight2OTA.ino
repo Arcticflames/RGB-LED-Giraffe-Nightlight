@@ -1,4 +1,4 @@
- #include <Dns.h>
+#include <Dns.h>
 #include <EthernetClient.h>
 #include <Ethernet.h>
 #include <EthernetServer.h>
@@ -25,15 +25,6 @@
 #define CLOCKPIN  4 // GPIO14 - CLK
 
 
-//how many clients should be able to telnet to this ESP8266
-#define MAX_SRV_CLIENTS 1
-
-
-
-// -------- Telnet debug comments
-WiFiServer server(23);
-WiFiClient serverClients[MAX_SRV_CLIENTS];
-// ------------------------------
 
 
 const boolean invert = false; // set true if common anode, false if common cathode
@@ -171,7 +162,7 @@ WiFi.mode(WIFI_STA);
 
   server.begin();
 
-//ArduinoOTA.setPassword((const char *)"123");
+
   
   ArduinoOTA.onStart([]() {
     Serial.println("Start");
@@ -228,29 +219,13 @@ BLYNK_WRITE(4) { //in blynk app, on / off for lamp
 }
 
 
-void loop() {
+void loop()
+  {
   ArduinoOTA.handle();
   Blynk.run();
   timer.run();
 
 
 
-// ---------- Trial on telnet debug messages
- if (server.hasClient()){
-    for(i = 0; i < MAX_SRV_CLIENTS; i++){
-      //find free/disconnected spot
-      if (!serverClients[i] || !serverClients[i].connected()){
-        if(serverClients[i]) serverClients[i].stop();
-        serverClients[i] = server.available();
-        Serial1.print("New client: "); Serial1.print(i);
-        continue;
-       serverClients[0].println("Firmware 0.381 25/10/2016");
-      }
-    }
-    //no free/disconnected spot so reject
-    WiFiClient serverClient = server.available();
-    serverClient.stop();
-  }
-// -----------------
 
-    }
+}
